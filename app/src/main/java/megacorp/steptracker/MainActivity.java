@@ -24,14 +24,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private LineGraphSeries<DataPoint> _series_raw_z;
 
     int MAX_DATA_POINTS = 100;
+    private double _graph_last_t = MAX_DATA_POINTS;
     private void AddAccelerometerDataPoint(float x, float y , float z)
     {
         Log.i("init", "INFO AddAccelerometerDataPoint");
-        _series_raw_x.appendData(new DataPoint(_graph2LastXValue, x), true, MAX_DATA_POINTS);
-        _series_raw_y.appendData(new DataPoint(_graph2LastXValue, y), true, MAX_DATA_POINTS);
-        _series_raw_z.appendData(new DataPoint(_graph2LastXValue, z), true, MAX_DATA_POINTS);
+        _series_raw_x.appendData(new DataPoint(_graph_last_t, x), true, MAX_DATA_POINTS);
+        _series_raw_y.appendData(new DataPoint(_graph_last_t, y), true, MAX_DATA_POINTS);
+        _series_raw_z.appendData(new DataPoint(_graph_last_t, z), true, MAX_DATA_POINTS);
 
-        _graph2LastXValue += 1d;
+        _graph_last_t += 1d;
         /*
         outputX.setText("x:"+String.format("%.1f",x));
         outputY.setText("y:"+String.format("%.1f",y));
@@ -64,9 +65,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
 
 
-
-
     // We use timers to intermittently generate random data for the two graphs
+    /*
     private final Handler _handler = new Handler();
     private Runnable _timer1;
     private Runnable _timer2;
@@ -74,7 +74,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private LineGraphSeries<DataPoint> _series1;
     private LineGraphSeries<DataPoint> _series2;
     private double _graph2LastXValue = MAX_DATA_POINTS;
-
+    */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -92,14 +92,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         // See also: https://developer.android.com/reference/android/hardware/SensorManager.html#SENSOR_DELAY_UI   SENSOR_DELAY_GAME
         _sensorManager.registerListener(this, _accelSensor, SensorManager.SENSOR_DELAY_UI);
 
-
+        // Accelerometer Sensor Graph
         GraphView graph_raw_accelerometer = (GraphView) this.findViewById(R.id.graph_raw_accelerometer);
 
-        // test data
         _series_raw_x = new LineGraphSeries<>();
         _series_raw_y = new LineGraphSeries<>();
         _series_raw_z = new LineGraphSeries<>();
-
 
         _series_raw_x.setTitle("Raw X");
         _series_raw_x.setColor(Color.RED);
@@ -191,6 +189,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
      * Helper function to generate data for the graph
      * @return
      */
+    /*
     private DataPoint[] generateData() {
         int count = 30;
         DataPoint[] values = new DataPoint[count];
@@ -209,4 +208,5 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private double getRandom() {
         return _lastRandom += _rand.nextDouble() * 0.5 - 0.25;
     }
+    */
 }
