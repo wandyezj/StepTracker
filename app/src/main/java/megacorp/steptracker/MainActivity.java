@@ -155,7 +155,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         graph_raw_accelerometer.addSeries(_series_raw_m);
 
         graph_raw_accelerometer.setTitle("Accelerometer Real-Time Graph (Scrolling)");
-        graph_raw_accelerometer.getGridLabelRenderer().setVerticalAxisTitle("Random Data");
+        graph_raw_accelerometer.getGridLabelRenderer().setVerticalAxisTitle("X:R  Y:G  Z:B");
 
         graph_raw_accelerometer.getViewport().setXAxisBoundsManual(true);
         graph_raw_accelerometer.getViewport().setMinX(0);
