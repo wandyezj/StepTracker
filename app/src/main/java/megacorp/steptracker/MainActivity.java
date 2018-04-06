@@ -10,6 +10,7 @@ import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.TextView;
 
 import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.series.DataPoint;
@@ -22,6 +23,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private LineGraphSeries<DataPoint> _series_raw_x;
     private LineGraphSeries<DataPoint> _series_raw_y;
     private LineGraphSeries<DataPoint> _series_raw_z;
+    private LineGraphSeries<DataPoint> _series_raw_m; // magnitude
 
     int MAX_DATA_POINTS = 100;
     private double _graph_last_t = MAX_DATA_POINTS;
@@ -32,6 +34,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         _series_raw_y.appendData(new DataPoint(_graph_last_t, y), true, MAX_DATA_POINTS);
         _series_raw_z.appendData(new DataPoint(_graph_last_t, z), true, MAX_DATA_POINTS);
 
+        _series_raw_z.appendData(new DataPoint(_graph_last_t, x + y + z), true, MAX_DATA_POINTS);
+
         _graph_last_t += 1d;
         /*
         outputX.setText("x:"+String.format("%.1f",x));
@@ -40,11 +44,29 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         */
     }
 
+    private float _initialSteps = 0;
+    private TextView _actualSteps;
+
+    private void AddStep(float steps)
+    {
+        if (_initialSteps == 0)
+        {
+            _initialSteps = steps;
+        }
+        else
+        {
+            float actualSteps = steps - _initialSteps;
+            _actualSteps.setText("Actual: " + Float.toString(actualSteps));
+        }
+    }
+
+
     // Calls for Acceleration Sensor
 
     // accelerometer stuff
     private SensorManager _sensorManager;
     private Sensor _accelSensor;
+    private Sensor _stepCounterSensor;
 
     @Override
     public void onSensorChanged(SensorEvent sensorEvent) {
@@ -55,6 +77,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 float z = sensorEvent.values[2];
 
                 AddAccelerometerDataPoint(x, y, z);
+                break;
+
+            case Sensor.TYPE_STEP_COUNTER:
+                float steps = sensorEvent.values[0];
+                AddStep(steps);
+                break;
         }
     }
 
@@ -80,8 +108,17 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        _actualSteps = (TextView)findViewById(R.id.steps_baseline);
+
+
         // See https://developer.android.com/guide/topics/sensors/sensors_motion.html
         _sensorManager = (SensorManager) this.getSystemService(Context.SENSOR_SERVICE);
+
+        _stepCounterSensor = _sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER);
+        _sensorManager.registerListener(this, _stepCounterSensor, SensorManager.SENSOR_DELAY_NORMAL);
+
+
+
         _accelSensor = _sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 
         // The official Google accelerometer example code found here:
@@ -98,6 +135,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         _series_raw_x = new LineGraphSeries<>();
         _series_raw_y = new LineGraphSeries<>();
         _series_raw_z = new LineGraphSeries<>();
+        _series_raw_m = new LineGraphSeries<>();
 
         _series_raw_x.setTitle("Raw X");
         _series_raw_x.setColor(Color.RED);
@@ -108,9 +146,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         _series_raw_z.setTitle("Raw Z");
         _series_raw_z.setColor(Color.BLUE);
 
+        _series_raw_m.setTitle("Raw M");
+        _series_raw_m.setColor(Color.MAGENTA);
+
         graph_raw_accelerometer.addSeries(_series_raw_x);
         graph_raw_accelerometer.addSeries(_series_raw_y);
         graph_raw_accelerometer.addSeries(_series_raw_z);
+        graph_raw_accelerometer.addSeries(_series_raw_m);
 
         graph_raw_accelerometer.setTitle("Accelerometer Real-Time Graph (Scrolling)");
         graph_raw_accelerometer.getGridLabelRenderer().setVerticalAxisTitle("Random Data");
@@ -118,6 +160,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         graph_raw_accelerometer.getViewport().setXAxisBoundsManual(true);
         graph_raw_accelerometer.getViewport().setMinX(0);
         graph_raw_accelerometer.getViewport().setMaxX(MAX_DATA_POINTS);
+
+
+
 
         // Test graphs
     /*
