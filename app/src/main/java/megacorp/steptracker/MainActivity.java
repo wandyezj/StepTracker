@@ -34,7 +34,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         _series_raw_y.appendData(new DataPoint(_graph_last_t, y), true, MAX_DATA_POINTS);
         _series_raw_z.appendData(new DataPoint(_graph_last_t, z), true, MAX_DATA_POINTS);
 
-        _series_raw_z.appendData(new DataPoint(_graph_last_t, x + y + z), true, MAX_DATA_POINTS);
+        _series_raw_m.appendData(new DataPoint(_graph_last_t, x + y + z), true, MAX_DATA_POINTS);
 
         _graph_last_t += 1d;
         /*
@@ -155,7 +155,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         graph_raw_accelerometer.addSeries(_series_raw_m);
 
         graph_raw_accelerometer.setTitle("Accelerometer Real-Time Graph (Scrolling)");
-        graph_raw_accelerometer.getGridLabelRenderer().setVerticalAxisTitle("X:R  Y:G  Z:B");
+        graph_raw_accelerometer.getGridLabelRenderer().setVerticalAxisTitle("X:R  Y:G  Z:B M:M");
 
         graph_raw_accelerometer.getViewport().setXAxisBoundsManual(true);
         graph_raw_accelerometer.getViewport().setMinX(0);
