@@ -35,7 +35,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         _series_raw_y.appendData(new DataPoint(_graph_last_t, y), true, MAX_DATA_POINTS);
         _series_raw_z.appendData(new DataPoint(_graph_last_t, z), true, MAX_DATA_POINTS);
 
+        // magnitude is actually sqrt (x^2 + y^2 + z^2)
         _series_raw_m.appendData(new DataPoint(_graph_last_t, x + y + z), true, MAX_DATA_POINTS);
+
+        // _series_smooth_m
 
         _graph_last_t += 1d;
     }
@@ -120,6 +123,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         _series_raw_y = new LineGraphSeries<>();
         _series_raw_z = new LineGraphSeries<>();
         _series_raw_m = new LineGraphSeries<>();
+        _series_smooth_m = new LineGraphSeries<>();
 
         _series_raw_x.setTitle("Raw X");
         _series_raw_x.setColor(Color.RED);
@@ -133,13 +137,17 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         _series_raw_m.setTitle("Raw M");
         _series_raw_m.setColor(Color.MAGENTA);
 
+        _series_smooth_m.setTitle("Smooth M");
+        _series_smooth_m.setColor(Color.BLACK);
+
         graph_raw_accelerometer.addSeries(_series_raw_x);
         graph_raw_accelerometer.addSeries(_series_raw_y);
         graph_raw_accelerometer.addSeries(_series_raw_z);
         graph_raw_accelerometer.addSeries(_series_raw_m);
+        graph_raw_accelerometer.addSeries(_series_smooth_m);
 
         graph_raw_accelerometer.setTitle("Accelerometer Real-Time Graph (Scrolling)");
-        graph_raw_accelerometer.getGridLabelRenderer().setVerticalAxisTitle("X:R  Y:G  Z:B M:M");
+        graph_raw_accelerometer.getGridLabelRenderer().setVerticalAxisTitle("X:R  Y:G  Z:B  M:M  SM:BK");
 
         graph_raw_accelerometer.getViewport().setXAxisBoundsManual(true);
         graph_raw_accelerometer.getViewport().setMinX(0);
