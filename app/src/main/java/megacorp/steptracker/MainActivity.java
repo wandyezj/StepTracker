@@ -18,13 +18,61 @@ import com.jjoe64.graphview.series.LineGraphSeries;
 
 import java.util.Random;
 
+import static java.lang.Math.sqrt;
+
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
 
     private LineGraphSeries<DataPoint> _series_raw_x;
     private LineGraphSeries<DataPoint> _series_raw_y;
     private LineGraphSeries<DataPoint> _series_raw_z;
+    private LineGraphSeries<DataPoint> _series_raw_s; // sum
     private LineGraphSeries<DataPoint> _series_raw_m; // magnitude
+
+    private LineGraphSeries<DataPoint> _series_smooth_x;
+    private LineGraphSeries<DataPoint> _series_smooth_y;
+    private LineGraphSeries<DataPoint> _series_smooth_z;
+
     private LineGraphSeries<DataPoint> _series_smooth_m;
+
+
+    // smoothing accelerometer signal stuff
+    // Increasing the size of the smoothing window will increasingly smooth the accel signal; however,
+    // at a cost of responsiveness. Play around with different window sizes: 20, 50, 100...
+    // Note that I've implemented a simple Mean Filter smoothing algorithm
+    private static int SMOOTHING_WINDOW_SIZE = 20;
+
+    private float _rawAccelValues[] = new float[3];
+    private float _accelValueHistory[][] = new float[3][SMOOTHING_WINDOW_SIZE];
+    private float _runningAccelTotal[] = new float[3];
+    private float _curAccelAvg[] = new float[3];
+    private int _curReadIndex = 0;
+
+    private void Smooth(float x, float y, float z)
+    {
+        _rawAccelValues[0] = x;
+        _rawAccelValues[1] = y;
+        _rawAccelValues[2] = z;
+
+        // Smoothing algorithm adapted from: https://www.arduino.cc/en/Tutorial/Smoothing
+        for (int i = 0; i < 3; i++) {
+            _runningAccelTotal[i] = _runningAccelTotal[i] - _accelValueHistory[i][_curReadIndex];
+            _accelValueHistory[i][_curReadIndex] = _rawAccelValues[i];
+            _runningAccelTotal[i] = _runningAccelTotal[i] + _accelValueHistory[i][_curReadIndex];
+            _curAccelAvg[i] = _runningAccelTotal[i] / SMOOTHING_WINDOW_SIZE;
+        }
+
+        _curReadIndex++;
+        if(_curReadIndex >= SMOOTHING_WINDOW_SIZE){
+            _curReadIndex = 0;
+        }
+    }
+
+
+    private double magnitude(float x, float y, float z)
+    {
+        return sqrt(x * x + y * y + z * z);
+    }
+
 
     int MAX_DATA_POINTS = 100;
     private double _graph_last_t = MAX_DATA_POINTS;
@@ -35,10 +83,22 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         _series_raw_y.appendData(new DataPoint(_graph_last_t, y), true, MAX_DATA_POINTS);
         _series_raw_z.appendData(new DataPoint(_graph_last_t, z), true, MAX_DATA_POINTS);
 
-        // magnitude is actually sqrt (x^2 + y^2 + z^2)
-        _series_raw_m.appendData(new DataPoint(_graph_last_t, x + y + z), true, MAX_DATA_POINTS);
+        _series_raw_s.appendData(new DataPoint(_graph_last_t, x + y + z), true, MAX_DATA_POINTS);
+
+        _series_raw_m.appendData(new DataPoint(_graph_last_t, magnitude(x, y, z)), true, MAX_DATA_POINTS);
+
 
         // _series_smooth_m
+        Smooth(x, y, z);
+        float smooth_x = _curAccelAvg[0];
+        float smooth_y = _curAccelAvg[1];
+        float smooth_z = _curAccelAvg[2];
+
+        _series_smooth_x.appendData(new DataPoint(_graph_last_t, smooth_x), true, MAX_DATA_POINTS);
+        _series_smooth_y.appendData(new DataPoint(_graph_last_t, smooth_y), true, MAX_DATA_POINTS);
+        _series_smooth_z.appendData(new DataPoint(_graph_last_t, smooth_z), true, MAX_DATA_POINTS);
+        _series_smooth_m.appendData(new DataPoint(_graph_last_t, magnitude(smooth_x, smooth_y, smooth_z)), true, MAX_DATA_POINTS);
+
 
         _graph_last_t += 1d;
     }
@@ -90,6 +150,18 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     }
 
+
+    private LineGraphSeries<DataPoint> MakeSeries(String name, int color, int thinkness, GraphView graph)
+    {
+        LineGraphSeries<DataPoint> series =  new LineGraphSeries<>();
+        series.setTitle(name);
+        series.setColor(color);
+        series.setThickness(thinkness);
+
+        graph.addSeries(series);
+        return series;
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -119,43 +191,35 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         // Accelerometer Sensor Graph
         GraphView graph_raw_accelerometer = (GraphView) this.findViewById(R.id.graph_raw_accelerometer);
 
-        _series_raw_x = new LineGraphSeries<>();
-        _series_raw_y = new LineGraphSeries<>();
-        _series_raw_z = new LineGraphSeries<>();
-        _series_raw_m = new LineGraphSeries<>();
-        _series_smooth_m = new LineGraphSeries<>();
+        int RAW_THICKNESS = 4;
+        _series_raw_x = MakeSeries("Raw X", Color.RED, RAW_THICKNESS, graph_raw_accelerometer);
+        _series_raw_y = MakeSeries("Raw Y", Color.GREEN, RAW_THICKNESS, graph_raw_accelerometer);
+        _series_raw_z = MakeSeries("Raw Z", Color.BLUE, RAW_THICKNESS, graph_raw_accelerometer);
+        _series_raw_s = MakeSeries("Raw S", Color.YELLOW, RAW_THICKNESS, graph_raw_accelerometer);
+        _series_raw_m = MakeSeries("Raw M", Color.GRAY, RAW_THICKNESS, graph_raw_accelerometer);
 
-        _series_raw_x.setTitle("Raw X");
-        _series_raw_x.setColor(Color.RED);
+        int SMOOTH_THICKNESS = 8;
+        _series_smooth_x = MakeSeries("Smooth X", Color.RED, SMOOTH_THICKNESS, graph_raw_accelerometer);
+        _series_smooth_y = MakeSeries("Smooth Y", Color.GREEN, SMOOTH_THICKNESS, graph_raw_accelerometer);
+        _series_smooth_z = MakeSeries("Smooth Z", Color.BLUE, SMOOTH_THICKNESS, graph_raw_accelerometer);
+        _series_smooth_m = MakeSeries("Smooth M", Color.BLACK, SMOOTH_THICKNESS, graph_raw_accelerometer);
 
-        _series_raw_y.setTitle("Raw Y");
-        _series_raw_y.setColor(Color.GREEN);
-
-        _series_raw_z.setTitle("Raw Z");
-        _series_raw_z.setColor(Color.BLUE);
-
-        _series_raw_m.setTitle("Raw M");
-        _series_raw_m.setColor(Color.MAGENTA);
-
-        _series_smooth_m.setTitle("Smooth M");
-        _series_smooth_m.setColor(Color.BLACK);
-
+/*
         graph_raw_accelerometer.addSeries(_series_raw_x);
         graph_raw_accelerometer.addSeries(_series_raw_y);
         graph_raw_accelerometer.addSeries(_series_raw_z);
+        graph_raw_accelerometer.addSeries(_series_raw_s);
         graph_raw_accelerometer.addSeries(_series_raw_m);
-        graph_raw_accelerometer.addSeries(_series_smooth_m);
 
+
+        graph_raw_accelerometer.addSeries(_series_smooth_m);
+*/
         graph_raw_accelerometer.setTitle("Accelerometer Real-Time Graph (Scrolling)");
-        graph_raw_accelerometer.getGridLabelRenderer().setVerticalAxisTitle("X:R  Y:G  Z:B  M:M  SM:BK");
+        graph_raw_accelerometer.getGridLabelRenderer().setVerticalAxisTitle("X:R  Y:G  Z:B  S:Y  M:GR  SM:BK");
 
         graph_raw_accelerometer.getViewport().setXAxisBoundsManual(true);
         graph_raw_accelerometer.getViewport().setMinX(0);
         graph_raw_accelerometer.getViewport().setMaxX(MAX_DATA_POINTS);
-
-
-
-
     }
 
     @Override
