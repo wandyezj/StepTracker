@@ -15,6 +15,7 @@ import android.widget.TextView;
 import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
+import com.jjoe64.graphview.series.PointsGraphSeries;
 
 import java.util.Random;
 
@@ -33,6 +34,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private LineGraphSeries<DataPoint> _series_smooth_z;
 
     private LineGraphSeries<DataPoint> _series_smooth_m;
+
+    private PointsGraphSeries<DataPoint> _series_sample; // base off of smoothing window
+    private PointsGraphSeries<DataPoint> _series_peak; // base off of smoothing window
 
 
     // smoothing accelerometer signal stuff
@@ -67,6 +71,72 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
     }
 
+    private static int MAGNITUDE_WINDOW_SIZE = 20;
+    private double _magnitudes[] = new double[MAGNITUDE_WINDOW_SIZE];
+    private int _index = 0;
+
+    private int Previous(int index, int size)
+    {
+        if (index == 0)
+        {
+            return size - 1;
+        }
+
+        return index - 1;
+    }
+
+    private int Next(int index, int size)
+    {
+        if (index == size - 1)
+        {
+            return 0;
+        }
+
+        return index + 1;
+    }
+
+    private void PeakDetection(double smooth_m, double t)
+    {
+        //Log.i("peak", "INFO PeakDetection");
+        // Post process previous and look for a peak
+
+        _magnitudes[_index] = smooth_m;
+
+
+        
+
+        int middle_index = Previous(_index, MAGNITUDE_WINDOW_SIZE);
+        int previous_index = Previous(middle_index, MAGNITUDE_WINDOW_SIZE);
+        int next_index = Next(middle_index, MAGNITUDE_WINDOW_SIZE);
+
+        //Log.i("peak", String.format("%d, %d, %d", previous_index, middle_index, next_index));
+
+        //Log.i("peak", "INFO PeakDetection - Index");
+        double previous = _magnitudes[previous_index];
+        double middle = _magnitudes[middle_index];
+        double next = _magnitudes[next_index];
+
+        //Log.i("peak", "INFO PeakDetection - compare");
+        if (previous < middle && middle > next)
+        {
+            //Log.i("peak", "INFO PeakDetection - add");
+            double peak_t = t - 1;
+            _series_peak.appendData(new DataPoint(peak_t, middle), true, MAX_DATA_POINTS);
+
+        }
+
+
+
+        // revolving buffer
+        _index++;
+        if (_index >= MAGNITUDE_WINDOW_SIZE)
+        {
+            _index = 0;
+        }
+
+    }
+
+
 
     private double magnitude(float x, float y, float z)
     {
@@ -78,7 +148,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private double _graph_last_t = MAX_DATA_POINTS;
     private void AddAccelerometerDataPoint(float x, float y , float z)
     {
-        Log.i("init", "INFO AddAccelerometerDataPoint");
+        //Log.i("init", "INFO AddAccelerometerDataPoint");
         _series_raw_x.appendData(new DataPoint(_graph_last_t, x), true, MAX_DATA_POINTS);
         _series_raw_y.appendData(new DataPoint(_graph_last_t, y), true, MAX_DATA_POINTS);
         _series_raw_z.appendData(new DataPoint(_graph_last_t, z), true, MAX_DATA_POINTS);
@@ -97,8 +167,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         _series_smooth_x.appendData(new DataPoint(_graph_last_t, smooth_x), true, MAX_DATA_POINTS);
         _series_smooth_y.appendData(new DataPoint(_graph_last_t, smooth_y), true, MAX_DATA_POINTS);
         _series_smooth_z.appendData(new DataPoint(_graph_last_t, smooth_z), true, MAX_DATA_POINTS);
-        _series_smooth_m.appendData(new DataPoint(_graph_last_t, magnitude(smooth_x, smooth_y, smooth_z)), true, MAX_DATA_POINTS);
+        double smooth_m = magnitude(smooth_x, smooth_y, smooth_z);
+        _series_smooth_m.appendData(new DataPoint(_graph_last_t, smooth_m), true, MAX_DATA_POINTS);
 
+        _series_sample.appendData(new DataPoint(_graph_last_t, smooth_m), true, MAX_DATA_POINTS);
+
+
+        PeakDetection(smooth_m, _graph_last_t);
 
         _graph_last_t += 1d;
     }
@@ -204,7 +279,30 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         _series_smooth_z = MakeSeries("Smooth Z", Color.BLUE, SMOOTH_THICKNESS, graph_raw_accelerometer);
         _series_smooth_m = MakeSeries("Smooth M", Color.BLACK, SMOOTH_THICKNESS, graph_raw_accelerometer);
 
-/*
+        int POINT_SIZE= 10;
+        _series_peak  = new PointsGraphSeries<>();
+        _series_peak.setTitle("Peaks");
+        _series_peak.setShape(PointsGraphSeries.Shape.TRIANGLE);
+        _series_peak.setSize(POINT_SIZE);
+        _series_peak.setColor(Color.MAGENTA);
+
+        graph_raw_accelerometer.addSeries(_series_peak);
+
+
+        _series_sample = new PointsGraphSeries<>();
+        _series_sample.setTitle("sample raw m");
+        _series_sample.setShape(PointsGraphSeries.Shape.POINT);
+        _series_sample.setSize(2);
+        _series_sample.setColor(Color.CYAN);
+
+        graph_raw_accelerometer.addSeries(_series_sample);
+
+
+
+        /*
+
+
+
         graph_raw_accelerometer.addSeries(_series_raw_x);
         graph_raw_accelerometer.addSeries(_series_raw_y);
         graph_raw_accelerometer.addSeries(_series_raw_z);
