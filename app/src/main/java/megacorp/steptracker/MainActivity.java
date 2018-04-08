@@ -243,10 +243,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         }
 */
-
-
-
-
     }
 
 
@@ -294,25 +290,21 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private float _initialSteps = 0;
     private TextView _actualSteps;
 
-    private void AddStepActual(float steps)
-    {
+    private void AddStepActual(float steps) {
         if (_initialSteps == 0)
         {
             _initialSteps = steps;
         }
-        else
-        {
-            float actualSteps = steps - _initialSteps;
-            _actualSteps.setText("Actual: " + Float.toString(actualSteps));
-        }
+
+        float actualSteps = steps - _initialSteps;
+        _actualSteps.setText(Float.toString(actualSteps));
     }
 
     private int _steps = 0;
     private TextView _algorithmSteps;
-    private void AddStepAlgorithm()
-    {
+    private void AddStepAlgorithm() {
         _steps++;
-        _algorithmSteps.setText("Algorithm: " + Integer.toString(_steps));
+        _algorithmSteps.setText(Integer.toString(_steps));
         _viewCreative.addShape();
     }
 
@@ -350,8 +342,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private CreativeView _viewCreative;
 
-    private LineGraphSeries<DataPoint> MakeSeries(String name, int color, int thinkness, GraphView graph)
-    {
+    private LineGraphSeries<DataPoint> MakeSeries(String name, int color, int thinkness, GraphView graph) {
         LineGraphSeries<DataPoint> series =  new LineGraphSeries<>();
         series.setTitle(name);
         series.setColor(color);

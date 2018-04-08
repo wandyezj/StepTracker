@@ -36,10 +36,20 @@
             >
 
             <TextView
+                android:id="@+id/steps_algorithm_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Steps Algorithm:"
+                android:layout_weight="1"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintRight_toRightOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
                 android:id="@+id/steps_algorithm"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Steps Algorithm: 0"
+                android:text="0"
                 android:layout_weight="1"
                 app:layout_constraintLeft_toLeftOf="parent"
                 app:layout_constraintRight_toRightOf="parent"
@@ -50,6 +60,16 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text=""
+                android:layout_weight="3"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintRight_toRightOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:id="@+id/steps_baseline_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Steps Baseline:"
                 android:layout_weight="1"
                 app:layout_constraintLeft_toLeftOf="parent"
                 app:layout_constraintRight_toRightOf="parent"
@@ -59,7 +79,7 @@
                 android:id="@+id/steps_baseline"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Steps Baseline: 0"
+                android:text="0"
                 android:layout_weight="1"
                 app:layout_constraintLeft_toLeftOf="parent"
                 app:layout_constraintRight_toRightOf="parent"
