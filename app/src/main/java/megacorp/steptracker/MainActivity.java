@@ -26,7 +26,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private LineGraphSeries<DataPoint> _series_raw_x;
     private LineGraphSeries<DataPoint> _series_raw_y;
     private LineGraphSeries<DataPoint> _series_raw_z;
-    private LineGraphSeries<DataPoint> _series_raw_s; // sum
+    //private LineGraphSeries<DataPoint> _series_raw_s; // sum
     private LineGraphSeries<DataPoint> _series_raw_m; // magnitude
 
     private LineGraphSeries<DataPoint> _series_smooth_x;
@@ -37,7 +37,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private PointsGraphSeries<DataPoint> _series_sample; // base off of smoothing window
     private PointsGraphSeries<DataPoint> _series_peak; // base off of smoothing window
-    //private PointsGraphSeries<DataPoint> _series_step_peak; // base off of smoothing window
+    private PointsGraphSeries<DataPoint> _series_step_peak; // base off of smoothing window
 
 
     // smoothing accelerometer signal stuff
@@ -72,13 +72,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
     }
 
-    private static int PERIOD_WINDOW = 10;
-    private static int MIN_PERIOD = 4;
-    private static double MIN_AMPLITUDE = 1;
+    private static int PERIOD_WINDOW = 15;
+    private static int MIN_PERIOD = 5;
+    private static double MIN_AMPLITUDE = 0.5;
 
     // should also have max period and max amplitude
 
-    private static int MAGNITUDE_WINDOW_SIZE = 100;
+    private static int MAGNITUDE_WINDOW_SIZE = 20;
     private double _magnitudes[] = new double[MAGNITUDE_WINDOW_SIZE];
     private double _magnitude_ts[] = new double[MAGNITUDE_WINDOW_SIZE];
     private int _magnitude_gradient[] = new int[MAGNITUDE_WINDOW_SIZE]; // Assign value of -2, 2, or 0, 0 means it is a peak or low point
@@ -152,6 +152,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         _magnitude_gradient[middle_index] = gradient;
 
+        if (gradient == 0)
+        {
+            _series_peak.appendData(new DataPoint(_magnitude_ts[middle_index], middle), true, MAX_DATA_POINTS);
+        }
 
         // look for peaks in the last period
         int index = middle_index;
@@ -160,6 +164,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         double best_high = -9999;
         double best_low = 9999;
+
+        double t_high = 0;
+        double t_low = 0;
 
         for (int i = 0; i < PERIOD_WINDOW - 1; i++)
         {
@@ -171,16 +178,19 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             {
                 double magnitude = _magnitudes[index];
 
-                if (magnitude > best_high)
-                {
-                    best_high_index = index;
-                    best_high = magnitude;
-                }
-
+                // looking for a high followed by a low
                 if (magnitude < best_low)
                 {
                     best_low_index = index;
                     best_low = magnitude;
+                    t_low = _magnitude_ts[best_low_index];
+                }
+
+                if (magnitude > best_high || t_low - t_high < MIN_PERIOD)
+                {
+                    best_high_index = index;
+                    best_high = magnitude;
+                    t_high = _magnitude_ts[best_high_index];
                 }
             }
             else if (index_gradient == 1)
@@ -202,9 +212,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         //Log.i("peak", "INFO PeakDetection - compare");
 
-        double t_high = _magnitude_ts[best_high_index];
-        double t_low = _magnitude_ts[best_low_index];
-
         if ( t_low - t_high < MIN_PERIOD)
         {
             // not enough time between points
@@ -218,13 +225,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
 
         // point accepted
-        _series_peak.appendData(new DataPoint(t_high, best_high), true, MAX_DATA_POINTS);
+        _series_step_peak.appendData(new DataPoint(t_high, best_high), true, MAX_DATA_POINTS);
 
         // remove gradients low
         _magnitude_gradient[best_low_index] = 1;
 
 
-        // updat ui with step count
+        // update ui with step count
         AddStepAlgorithm();
 /*
         if (previous < middle && middle > next)
@@ -258,7 +265,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         _series_raw_y.appendData(new DataPoint(_graph_last_t, y), true, MAX_DATA_POINTS);
         _series_raw_z.appendData(new DataPoint(_graph_last_t, z), true, MAX_DATA_POINTS);
 
-        _series_raw_s.appendData(new DataPoint(_graph_last_t, x + y + z), true, MAX_DATA_POINTS);
+        //_series_raw_s.appendData(new DataPoint(_graph_last_t, x + y + z), true, MAX_DATA_POINTS);
 
         _series_raw_m.appendData(new DataPoint(_graph_last_t, magnitude(x, y, z)), true, MAX_DATA_POINTS);
 
@@ -383,23 +390,24 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         _series_raw_x = MakeSeries("Raw X", Color.RED, RAW_THICKNESS, graph_raw_accelerometer);
         _series_raw_y = MakeSeries("Raw Y", Color.GREEN, RAW_THICKNESS, graph_raw_accelerometer);
         _series_raw_z = MakeSeries("Raw Z", Color.BLUE, RAW_THICKNESS, graph_raw_accelerometer);
-        _series_raw_s = MakeSeries("Raw S", Color.YELLOW, RAW_THICKNESS, graph_raw_accelerometer);
+        //_series_raw_s = MakeSeries("Raw S", Color.YELLOW, RAW_THICKNESS, graph_raw_accelerometer);
         _series_raw_m = MakeSeries("Raw M", Color.GRAY, RAW_THICKNESS, graph_raw_accelerometer);
 
         int SMOOTH_THICKNESS = 8;
         _series_smooth_x = MakeSeries("Smooth X", Color.RED, SMOOTH_THICKNESS, graph_raw_accelerometer);
         _series_smooth_y = MakeSeries("Smooth Y", Color.GREEN, SMOOTH_THICKNESS, graph_raw_accelerometer);
         _series_smooth_z = MakeSeries("Smooth Z", Color.BLUE, SMOOTH_THICKNESS, graph_raw_accelerometer);
-        _series_smooth_m = MakeSeries("Smooth M", Color.BLACK, SMOOTH_THICKNESS, graph_raw_accelerometer);
+        _series_smooth_m = MakeSeries("Smooth M", Color.BLACK, SMOOTH_THICKNESS * 2, graph_raw_accelerometer);
 
-        int POINT_SIZE= 10;
-        _series_peak  = new PointsGraphSeries<>();
-        _series_peak.setTitle("Peaks");
-        _series_peak.setShape(PointsGraphSeries.Shape.TRIANGLE);
-        _series_peak.setSize(POINT_SIZE);
-        _series_peak.setColor(Color.MAGENTA);
+        int POINT_SIZE= 30;
+        _series_step_peak  = new PointsGraphSeries<>();
+        _series_step_peak.setTitle("Step Peaks");
+        _series_step_peak.setShape(PointsGraphSeries.Shape.TRIANGLE);
+        _series_step_peak.setSize(POINT_SIZE);
+        _series_step_peak.setColor(Color.MAGENTA);
 
-        graph_raw_accelerometer.addSeries(_series_peak);
+        graph_raw_accelerometer.addSeries(_series_step_peak);
+
 
 
         _series_sample = new PointsGraphSeries<>();
@@ -410,6 +418,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         graph_raw_accelerometer.addSeries(_series_sample);
 
+
+
+        _series_peak = new PointsGraphSeries<>();
+        _series_peak.setTitle("Peaks");
+        _series_peak.setShape(PointsGraphSeries.Shape.POINT);
+        _series_peak.setSize(4);
+        _series_peak.setColor(Color.CYAN);
+
+        graph_raw_accelerometer.addSeries(_series_peak);
 
 
         /*
@@ -431,6 +448,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         graph_raw_accelerometer.getViewport().setXAxisBoundsManual(true);
         graph_raw_accelerometer.getViewport().setMinX(0);
         graph_raw_accelerometer.getViewport().setMaxX(MAX_DATA_POINTS);
+
+        graph_raw_accelerometer.getViewport().setYAxisBoundsManual(true);
+        graph_raw_accelerometer.getViewport().setMaxY(15);
+        graph_raw_accelerometer.getViewport().setMinY(-5);
     }
 
     @Override
