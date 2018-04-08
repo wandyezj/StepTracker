@@ -37,6 +37,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private PointsGraphSeries<DataPoint> _series_sample; // base off of smoothing window
     private PointsGraphSeries<DataPoint> _series_peak; // base off of smoothing window
+    //private PointsGraphSeries<DataPoint> _series_step_peak; // base off of smoothing window
 
 
     // smoothing accelerometer signal stuff
@@ -71,8 +72,22 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
     }
 
-    private static int MAGNITUDE_WINDOW_SIZE = 20;
+    private static int PERIOD_WINDOW = 10;
+    private static int MIN_PERIOD = 4;
+    private static double MIN_AMPLITUDE = 1;
+
+    // should also have max period and max amplitude
+
+    private static int MAGNITUDE_WINDOW_SIZE = 100;
     private double _magnitudes[] = new double[MAGNITUDE_WINDOW_SIZE];
+    private double _magnitude_ts[] = new double[MAGNITUDE_WINDOW_SIZE];
+    private int _magnitude_gradient[] = new int[MAGNITUDE_WINDOW_SIZE]; // Assign value of -2, 2, or 0, 0 means it is a peak or low point
+    // low point pattern of ... -2 , 0, 2 ...
+    // high point pattern of ... 2, 0, -2 ...
+    // point gradient is determined by previous and next slope
+    // determine the amplitude between high point and low point
+    // determine the period between high point and low point
+
     private int _index = 0;
 
     private int Previous(int index, int size)
@@ -101,13 +116,19 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         // Post process previous and look for a peak
 
         _magnitudes[_index] = smooth_m;
-
-
-        
+        _magnitude_ts[_index] = t;
 
         int middle_index = Previous(_index, MAGNITUDE_WINDOW_SIZE);
         int previous_index = Previous(middle_index, MAGNITUDE_WINDOW_SIZE);
         int next_index = Next(middle_index, MAGNITUDE_WINDOW_SIZE);
+
+        // revolving buffer
+        _index++;
+        if (_index >= MAGNITUDE_WINDOW_SIZE)
+        {
+            _index = 0;
+        }
+        // Do not use _index after this point
 
         //Log.i("peak", String.format("%d, %d, %d", previous_index, middle_index, next_index));
 
@@ -116,7 +137,96 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         double middle = _magnitudes[middle_index];
         double next = _magnitudes[next_index];
 
+        int gradient = 0;
+        if (middle > previous) {
+            gradient++;
+        } else {
+            gradient--;
+        }
+
+        if (middle > next) {
+            gradient--;
+        } else{
+            gradient++;
+        }
+
+        _magnitude_gradient[middle_index] = gradient;
+
+
+        // look for peaks in the last period
+        int index = middle_index;
+        int best_high_index = -1;
+        int best_low_index = -1;
+
+        double best_high = -9999;
+        double best_low = 9999;
+
+        for (int i = 0; i < PERIOD_WINDOW - 1; i++)
+        {
+            index = Previous(index, MAGNITUDE_WINDOW_SIZE);
+            int index_gradient = _magnitude_gradient[index];
+
+            // found a peak, which is it?
+            if (index_gradient == 0)
+            {
+                double magnitude = _magnitudes[index];
+
+                if (magnitude > best_high)
+                {
+                    best_high_index = index;
+                    best_high = magnitude;
+                }
+
+                if (magnitude < best_low)
+                {
+                    best_low_index = index;
+                    best_low = magnitude;
+                }
+            }
+            else if (index_gradient == 1)
+            {
+                // found an already indexed point
+                return;
+            }
+        }
+
+        //Log.i("peak", String.format("%d, %d", best_high_index, best_low_index));
+
+
+        // now that the best peaks have been found
+        if (best_high_index == best_low_index || best_low_index == -1 || best_high_index == -1)
+        {
+            // Found no period (set of high and low peaks)
+            return;
+        }
+
         //Log.i("peak", "INFO PeakDetection - compare");
+
+        double t_high = _magnitude_ts[best_high_index];
+        double t_low = _magnitude_ts[best_low_index];
+
+        if ( t_low - t_high < MIN_PERIOD)
+        {
+            // not enough time between points
+            return;
+        }
+
+        if (best_high - best_low < MIN_AMPLITUDE)
+        {
+            // Not enough motion
+            return;
+        }
+
+        // point accepted
+        _series_peak.appendData(new DataPoint(t_high, best_high), true, MAX_DATA_POINTS);
+
+        // remove gradients low
+        _magnitude_gradient[best_low_index] = 1;
+
+
+        // updat ui with step count
+        AddStepAlgorithm();
+/*
         if (previous < middle && middle > next)
         {
             //Log.i("peak", "INFO PeakDetection - add");
@@ -124,15 +234,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             _series_peak.appendData(new DataPoint(peak_t, middle), true, MAX_DATA_POINTS);
 
         }
+*/
 
 
 
-        // revolving buffer
-        _index++;
-        if (_index >= MAGNITUDE_WINDOW_SIZE)
-        {
-            _index = 0;
-        }
 
     }
 
@@ -181,7 +286,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private float _initialSteps = 0;
     private TextView _actualSteps;
 
-    private void AddStep(float steps)
+    private void AddStepActual(float steps)
     {
         if (_initialSteps == 0)
         {
@@ -192,6 +297,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             float actualSteps = steps - _initialSteps;
             _actualSteps.setText("Actual: " + Float.toString(actualSteps));
         }
+    }
+
+    private int _steps = 0;
+    private TextView _algorithmSteps;
+    private void AddStepAlgorithm()
+    {
+        _steps++;
+        _algorithmSteps.setText("Algorithm: " + Integer.toString(_steps));
     }
 
 
@@ -215,7 +328,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
             case Sensor.TYPE_STEP_COUNTER:
                 float steps = sensorEvent.values[0];
-                AddStep(steps);
+                AddStepActual(steps);
                 break;
         }
     }
@@ -243,7 +356,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         setContentView(R.layout.activity_main);
 
         _actualSteps = (TextView)findViewById(R.id.steps_baseline);
-
+        _algorithmSteps = (TextView)findViewById(R.id.steps_algorithm);
 
         // See https://developer.android.com/guide/topics/sensors/sensors_motion.html
         _sensorManager = (SensorManager) this.getSystemService(Context.SENSOR_SERVICE);
