@@ -6,6 +6,7 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.nfc.NfcAdapter;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -312,6 +313,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     {
         _steps++;
         _algorithmSteps.setText("Algorithm: " + Integer.toString(_steps));
+        _viewCreative.addShape();
     }
 
 
@@ -346,6 +348,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
 
+    private CreativeView _viewCreative;
+
     private LineGraphSeries<DataPoint> MakeSeries(String name, int color, int thinkness, GraphView graph)
     {
         LineGraphSeries<DataPoint> series =  new LineGraphSeries<>();
@@ -364,6 +368,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         _actualSteps = (TextView)findViewById(R.id.steps_baseline);
         _algorithmSteps = (TextView)findViewById(R.id.steps_algorithm);
+
+        _viewCreative = (CreativeView)findViewById(R.id.creative_view);
 
         // See https://developer.android.com/guide/topics/sensors/sensors_motion.html
         _sensorManager = (SensorManager) this.getSystemService(Context.SENSOR_SERVICE);
