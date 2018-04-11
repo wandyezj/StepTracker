@@ -20,6 +20,7 @@ import com.jjoe64.graphview.series.PointsGraphSeries;
 
 import java.util.Random;
 
+import static java.lang.Math.abs;
 import static java.lang.Math.sqrt;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
@@ -38,6 +39,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private PointsGraphSeries<DataPoint> _series_sample; // base off of smoothing window
     private PointsGraphSeries<DataPoint> _series_peak; // base off of smoothing window
+    private PointsGraphSeries<DataPoint> _series_step_valley; // base off of smoothing window
     private PointsGraphSeries<DataPoint> _series_step_peak; // base off of smoothing window
 
 
@@ -73,13 +75,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
     }
 
-    private static int PERIOD_WINDOW = 15;
-    private static int MIN_PERIOD = 5;
-    private static double MIN_AMPLITUDE = 0.5;
+    private static int PERIOD_WINDOW = 20;
+    private static int MIN_PERIOD = 4;
+    private static double MIN_AMPLITUDE = 0.25;
 
     // should also have max period and max amplitude
 
-    private static int MAGNITUDE_WINDOW_SIZE = 20;
+    private static int MAGNITUDE_WINDOW_SIZE = 100;
     private double _magnitudes[] = new double[MAGNITUDE_WINDOW_SIZE];
     private double _magnitude_ts[] = new double[MAGNITUDE_WINDOW_SIZE];
     private int _magnitude_gradient[] = new int[MAGNITUDE_WINDOW_SIZE]; // Assign value of -2, 2, or 0, 0 means it is a peak or low point
@@ -91,28 +93,23 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private int _index = 0;
 
-    private int Previous(int index, int size)
-    {
-        if (index == 0)
-        {
+    private int Previous(int index, int size) {
+        if (index == 0) {
             return size - 1;
         }
 
         return index - 1;
     }
 
-    private int Next(int index, int size)
-    {
-        if (index == size - 1)
-        {
+    private int Next(int index, int size) {
+        if (index == size - 1) {
             return 0;
         }
 
         return index + 1;
     }
 
-    private void PeakDetection(double smooth_m, double t)
-    {
+    private void PeakDetection(double smooth_m, double t) {
         //Log.i("peak", "INFO PeakDetection");
         // Post process previous and look for a peak
 
@@ -139,6 +136,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         double next = _magnitudes[next_index];
 
         int gradient = 0;
+
+        /*
+        int dp = 1;
+        if (abs(middle - previous) > MIN_GRADIENT_VALUE){
+
+        }
+        */
+
         if (middle > previous) {
             gradient++;
         } else {
@@ -178,20 +183,21 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             if (index_gradient == 0)
             {
                 double magnitude = _magnitudes[index];
+                double tx = _magnitude_ts[index];
 
                 // looking for a high followed by a low
                 if (magnitude < best_low)
                 {
                     best_low_index = index;
                     best_low = magnitude;
-                    t_low = _magnitude_ts[best_low_index];
+                    t_low = tx;
                 }
 
                 if (magnitude > best_high || t_low - t_high < MIN_PERIOD)
                 {
                     best_high_index = index;
                     best_high = magnitude;
-                    t_high = _magnitude_ts[best_high_index];
+                    t_high = tx;
                 }
             }
             else if (index_gradient == 1)
@@ -227,6 +233,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         // point accepted
         _series_step_peak.appendData(new DataPoint(t_high, best_high), true, MAX_DATA_POINTS);
+        _series_step_valley.appendData(new DataPoint(t_low, best_low), true, MAX_DATA_POINTS);
 
         // remove gradients low
         _magnitude_gradient[best_low_index] = 1;
@@ -234,15 +241,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         // update ui with step count
         AddStepAlgorithm();
-/*
-        if (previous < middle && middle > next)
-        {
-            //Log.i("peak", "INFO PeakDetection - add");
-            double peak_t = t - 1;
-            _series_peak.appendData(new DataPoint(peak_t, middle), true, MAX_DATA_POINTS);
-
-        }
-*/
     }
 
 
@@ -253,7 +251,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
 
-    int MAX_DATA_POINTS = 100;
+    int MAX_DATA_POINTS = 150;
     private double _graph_last_t = MAX_DATA_POINTS;
     private void AddAccelerometerDataPoint(float x, float y , float z)
     {
@@ -336,7 +334,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int i) {
-
     }
 
 
@@ -344,45 +341,44 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private LineGraphSeries<DataPoint> MakeSeries(String name, int color, int thinkness, GraphView graph) {
         LineGraphSeries<DataPoint> series =  new LineGraphSeries<>();
+
         series.setTitle(name);
         series.setColor(color);
         series.setThickness(thinkness);
 
         graph.addSeries(series);
+
         return series;
     }
+
+    private PointsGraphSeries<DataPoint> MakeSeries(String name, PointsGraphSeries.Shape shape, int color, int size, GraphView graph){
+        PointsGraphSeries<DataPoint> series = new PointsGraphSeries<DataPoint>();
+
+        series.setTitle(name);
+        series.setShape(shape);
+        series.setColor(color);
+        series.setSize(size);
+
+        graph.addSeries(series);
+
+        return series;
+    }
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // Views
+
         _actualSteps = (TextView)findViewById(R.id.steps_baseline);
         _algorithmSteps = (TextView)findViewById(R.id.steps_algorithm);
-
         _viewCreative = (CreativeView)findViewById(R.id.creative_view);
-
-        // See https://developer.android.com/guide/topics/sensors/sensors_motion.html
-        _sensorManager = (SensorManager) this.getSystemService(Context.SENSOR_SERVICE);
-
-        _stepCounterSensor = _sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER);
-        _sensorManager.registerListener(this, _stepCounterSensor, SensorManager.SENSOR_DELAY_NORMAL);
-
-
-
-        _accelSensor = _sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-
-        // The official Google accelerometer example code found here:
-        //   https://github.com/android/platform_development/blob/master/samples/AccelerometerPlay/src/com/example/android/accelerometerplay/AccelerometerPlayActivity.java
-        // explains that it is not necessary to get accelerometer events at a very high rate, by using a slower rate (SENSOR_DELAY_UI), we get an
-        // automatic low-pass filter, which "extracts" the gravity component of the acceleration. As an added benefit, we use less power and
-        // CPU resources. I haven't experimented with this, so can't be sure.
-        // See also: https://developer.android.com/reference/android/hardware/SensorManager.html#SENSOR_DELAY_UI   SENSOR_DELAY_GAME
-        _sensorManager.registerListener(this, _accelSensor, SensorManager.SENSOR_DELAY_UI);
 
         // Accelerometer Sensor Graph
         GraphView graph_raw_accelerometer = (GraphView) this.findViewById(R.id.graph_raw_accelerometer);
-
+        // Create series
         int RAW_THICKNESS = 4;
         _series_raw_x = MakeSeries("Raw X", Color.RED, RAW_THICKNESS, graph_raw_accelerometer);
         _series_raw_y = MakeSeries("Raw Y", Color.GREEN, RAW_THICKNESS, graph_raw_accelerometer);
@@ -396,49 +392,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         _series_smooth_z = MakeSeries("Smooth Z", Color.BLUE, SMOOTH_THICKNESS, graph_raw_accelerometer);
         _series_smooth_m = MakeSeries("Smooth M", Color.BLACK, SMOOTH_THICKNESS * 2, graph_raw_accelerometer);
 
-        int POINT_SIZE= 30;
-        _series_step_peak  = new PointsGraphSeries<>();
-        _series_step_peak.setTitle("Step Peaks");
-        _series_step_peak.setShape(PointsGraphSeries.Shape.TRIANGLE);
-        _series_step_peak.setSize(POINT_SIZE);
-        _series_step_peak.setColor(Color.MAGENTA);
-
-        graph_raw_accelerometer.addSeries(_series_step_peak);
+        _series_step_peak = MakeSeries("Step Peaks", PointsGraphSeries.Shape.TRIANGLE,  Color.MAGENTA, 20, graph_raw_accelerometer);
+        _series_step_valley = MakeSeries("Step Valley", PointsGraphSeries.Shape.RECTANGLE, Color.MAGENTA, 10, graph_raw_accelerometer);
+        _series_sample = MakeSeries("sample raw m", PointsGraphSeries.Shape.POINT,  Color.CYAN, 2, graph_raw_accelerometer);
+        _series_peak = MakeSeries("Peaks", PointsGraphSeries.Shape.POINT, Color.CYAN, 4,  graph_raw_accelerometer);
 
 
-
-        _series_sample = new PointsGraphSeries<>();
-        _series_sample.setTitle("sample raw m");
-        _series_sample.setShape(PointsGraphSeries.Shape.POINT);
-        _series_sample.setSize(2);
-        _series_sample.setColor(Color.CYAN);
-
-        graph_raw_accelerometer.addSeries(_series_sample);
-
-
-
-        _series_peak = new PointsGraphSeries<>();
-        _series_peak.setTitle("Peaks");
-        _series_peak.setShape(PointsGraphSeries.Shape.POINT);
-        _series_peak.setSize(4);
-        _series_peak.setColor(Color.CYAN);
-
-        graph_raw_accelerometer.addSeries(_series_peak);
-
-
-        /*
-
-
-
-        graph_raw_accelerometer.addSeries(_series_raw_x);
-        graph_raw_accelerometer.addSeries(_series_raw_y);
-        graph_raw_accelerometer.addSeries(_series_raw_z);
-        graph_raw_accelerometer.addSeries(_series_raw_s);
-        graph_raw_accelerometer.addSeries(_series_raw_m);
-
-
-        graph_raw_accelerometer.addSeries(_series_smooth_m);
-*/
         graph_raw_accelerometer.setTitle("Accelerometer Real-Time Graph (Scrolling)");
         graph_raw_accelerometer.getGridLabelRenderer().setVerticalAxisTitle("X:R  Y:G  Z:B  S:Y  M:GR  SM:BK");
 
@@ -449,12 +408,31 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         graph_raw_accelerometer.getViewport().setYAxisBoundsManual(true);
         graph_raw_accelerometer.getViewport().setMaxY(15);
         graph_raw_accelerometer.getViewport().setMinY(-5);
+
+
+        // Sensors
+
+        // See https://developer.android.com/guide/topics/sensors/sensors_motion.html
+        _sensorManager = (SensorManager) this.getSystemService(Context.SENSOR_SERVICE);
+
+        _stepCounterSensor = _sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER);
+        _sensorManager.registerListener(this, _stepCounterSensor, SensorManager.SENSOR_DELAY_NORMAL);
+
+
+        _accelSensor = _sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+
+        // The official Google accelerometer example code found here:
+        //   https://github.com/android/platform_development/blob/master/samples/AccelerometerPlay/src/com/example/android/accelerometerplay/AccelerometerPlayActivity.java
+        // explains that it is not necessary to get accelerometer events at a very high rate, by using a slower rate (SENSOR_DELAY_UI), we get an
+        // automatic low-pass filter, which "extracts" the gravity component of the acceleration. As an added benefit, we use less power and
+        // CPU resources. I haven't experimented with this, so can't be sure.
+        // See also: https://developer.android.com/reference/android/hardware/SensorManager.html#SENSOR_DELAY_UI   SENSOR_DELAY_GAME
+        _sensorManager.registerListener(this, _accelSensor, SensorManager.SENSOR_DELAY_UI);
     }
 
     @Override
     public void onResume() {
         super.onResume();
-
     }
 
     @Override
