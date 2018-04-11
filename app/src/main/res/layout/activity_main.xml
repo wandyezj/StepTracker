@@ -13,16 +13,16 @@
         android:layout_height="match_parent"
         android:weightSum="2"
         android:orientation="vertical">
-    <!--
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Steps:"
+            android:text="Walk to fill your life with color."
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            android:id="@+id/steps_label"/>
--->
+            android:id="@+id/challenge_label"/>
+
         <megacorp.steptracker.CreativeView
             android:layout_weight="1"
             android:layout_width="match_parent"

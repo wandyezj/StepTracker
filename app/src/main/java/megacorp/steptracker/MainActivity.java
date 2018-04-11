@@ -37,11 +37,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private LineGraphSeries<DataPoint> _series_smooth_m;
 
-    private PointsGraphSeries<DataPoint> _series_sample; // base off of smoothing window
-    private PointsGraphSeries<DataPoint> _series_peak; // base off of smoothing window
-    private PointsGraphSeries<DataPoint> _series_step_valley; // base off of smoothing window
-    private PointsGraphSeries<DataPoint> _series_step_peak; // base off of smoothing window
-
+    private PointsGraphSeries<DataPoint> _series_sample;
+    private PointsGraphSeries<DataPoint> _series_peak; // based off of smooth m
+    private PointsGraphSeries<DataPoint> _series_step_valley;
+    private PointsGraphSeries<DataPoint> _series_step_peak;
 
     // smoothing accelerometer signal stuff
     // Increasing the size of the smoothing window will increasingly smooth the accel signal; however,
@@ -77,7 +76,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private static int PERIOD_WINDOW = 20;
     private static int MIN_PERIOD = 4;
-    private static double MIN_AMPLITUDE = 0.25;
+    private static double MIN_AMPLITUDE = 0.3;
 
     // should also have max period and max amplitude
 
