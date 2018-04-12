@@ -38,9 +38,6 @@ public class CreativeView extends View {
         }
     }
 
-
-
-
     public CreativeView(Context context) {
         super(context);
     }
@@ -57,9 +54,7 @@ public class CreativeView extends View {
 
     }
 
-
     private LinkedList<Shape> shapes = new LinkedList<>();
-
 
     private Random _random = new Random();
 
@@ -67,10 +62,7 @@ public class CreativeView extends View {
     private static int MAX_CIRCLE_RADIUS = 200 + 1;
     private static int MAX_ARGB = 255 + 1;
 
-    public void addShape()
-    {
-
-
+    public void addShape() {
         // Generate random paint color
         Paint paint = new Paint();
 

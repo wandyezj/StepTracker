@@ -74,7 +74,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
     }
 
-    private static int PERIOD_WINDOW = 20;
+    private static int PERIOD_WINDOW = 10;
     private static int MIN_PERIOD = 4;
     private static double MIN_AMPLITUDE = 0.3;
 
@@ -127,6 +127,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
         // Do not use _index after this point
 
+
+        // Is the previous point a peek?
+
         //Log.i("peak", String.format("%d, %d, %d", previous_index, middle_index, next_index));
 
         //Log.i("peak", "INFO PeakDetection - Index");
@@ -135,13 +138,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         double next = _magnitudes[next_index];
 
         int gradient = 0;
-
-        /*
-        int dp = 1;
-        if (abs(middle - previous) > MIN_GRADIENT_VALUE){
-
-        }
-        */
 
         if (middle > previous) {
             gradient++;
@@ -284,6 +280,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         _graph_last_t += 1d;
     }
 
+    // Googles Algorithm
     private float _initialSteps = 0;
     private TextView _actualSteps;
 
@@ -297,6 +294,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         _actualSteps.setText(Float.toString(actualSteps));
     }
 
+    // Custom Algorithm
     private int _steps = 0;
     private TextView _algorithmSteps;
     private void AddStepAlgorithm() {
